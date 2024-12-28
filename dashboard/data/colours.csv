@@ -1,0 +1,14 @@
+bucket,subbucket,colour
+Stocks,Switzerland,#258b5f
+Stocks,Europe,#258b5f
+Stocks,Americas,#258b5f
+Stocks,Asia,#258b5f
+Stocks,Emerging,#258b5f
+Stocks,Global,#258b5f
+Real estate,RE,#1b8979
+Commodities,Gold,#16878c
+Commodities,Silver,#16878c
+Bonds,Corporates EUR,#14849f
+Bonds,Corporates USD,#14849f
+Bonds,Countries,#14849f
+Currencies,Currency,#147fb8

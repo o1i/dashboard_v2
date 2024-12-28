@@ -1,0 +1,41 @@
+h1, h2, h3, body {
+    font-family: sans-serif;
+    color: #abaaaa;
+}
+
+body {
+    background-color: #333339;
+}
+
+.input-part {
+    margin: 5px;
+}
+
+#user-input {
+    display: flex;
+}
+
+#start, #end {
+    width: 150px;
+}
+
+.Select-value, .Select-control, .dash-dropdown, .Select-menu-outer, .Select-value-label {
+    color: #abaaaa !important;
+    background: #333339 !important;
+}
+
+
+#grid_container {
+    display: grid;
+    grid-template-columns: 30% 30% 30%;
+    grid-template-rows: 380px 380px 380px;
+    grid-row-gap: 50px;
+    grid-column-gap: 0 px;
+}
+
+#attributionContainer {
+    grid-column-start: 2;
+    grid-column-end: 4;
+}
+
+

@@ -1,0 +1,22 @@
+bucket,subbucket,isin,yf,yf_proxy,currency,desc,comment
+Stocks,Switzerland,SPICHA,SPICHA.SW,,CHF,SPI,SPI
+Stocks,Europe,IMAE,IMAE.AS,IEUR,EUR,Europe,MSCI Europe Incl 15% CH
+Stocks,Americas,CSPX,CSPX.L,,USD,S&P 500,S&P 500
+Stocks,Americas,BRK B,BRK-B,,USD,Berkshire,Berkshire
+Stocks,Asia,AJEUAS,AJEUAS.MI,,EUR,Asia ex Japan,MSCI Asia ex Japan
+Stocks,Asia,LCJD,LCJD.L,,JPY,Japan,MSCI Japan
+Stocks,Emerging,AEEM,AEEM.PA,,EUR,E&F markets,MSCI Emerging & Frontier markets incl 50% china/taiwan
+Stocks,Global,ACWIA,ACWIA.MI,,EUR,ACWI,ACWI
+Stocks,Global,IE00B4L5Y983,IWDA.L,,USD,MSCI World,MSCIW
+Bonds,Corporates EUR,IEAC,IEAC.SW,,EUR,EUR corp. bonds,iShares Core Euro Corporate Bond ETF
+Bonds,Corporates USD,LQDE,LQDE.SW,,USD,UDS corp. bonds,iShares USD Corporate Bond ETF
+Bonds,Countries,IGLO,IGLO.SW,,USD,gov. bonds,iShares global government bond ETF
+Commodities,Gold,AUUSIUSD,AUUSI.SW,,USD,Gold,UBS physical gold ETF
+Commodities,Silver,SVUSA,SVUSA.SW,SLV,USD,Silver,UBS physical silver ETF
+Real estate,RE,EPRA,HPRD.MI,,EUR,Global REIT,Amundi Developed wolrd REIT (50% US)
+Real estate,RE,immovision,,,CHF,Immo Vision,Immo Vision
+Currencies,Currency,EUR,EURCHF=X,,EUR,EUR,EUR
+Currencies,Currency,CHF,,,CHF,CHF,CHF
+Currencies,Currency,USD,USDCHF=X,,USD,USD,USD
+Currencies,Currency,JPY,JPYCHF=X,,JPY,JPY,JPY
+,,,
