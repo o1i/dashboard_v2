@@ -1,5 +1,6 @@
 from functools import partial
 from pathlib import Path
+import logging
 
 import colour
 from dash import Dash, html, dcc, Input, Output
@@ -8,13 +9,18 @@ import plotly.graph_objects as go
 import plotly.express as px
 
 from src.reporting import (
+    distribute_benchmark_weights,
     get_benchmark_portfolio,
     get_holdings_portfolio,
     portfolio_total_performance,
-    get_prices,
+    get_holdings_frame,
+    retrieve_original_investment,
+    get_prices_with_cache,
+    benchmark_value,
 )
 
-# __file__ = r"/Users/oliverburkhard/PycharmProjects/dashboard/dashboard/reporting.py"
+# __file__ = r"/Users/oliverburkhard/projects/dashboard_v2/dashboard/reporting.py"
+logging.basicConfig(level=logging.INFO)
 app = Dash(__name__)
 
 
@@ -46,9 +52,13 @@ RAW = Path(__file__).parents[0] / "data"
 benchmarks = pd.read_csv(RAW / "benchmarks.csv")
 universe = pd.read_csv(RAW / "universe.csv")
 manual_prices = pd.read_csv(RAW / "manual_prices.csv")
-holdings_frame = pd.read_csv(RAW / "portfolio.csv")
-prices = get_prices(
-    universe=universe, portfolio=holdings_frame, manual_prices=manual_prices
+holdings_frame = get_holdings_frame(RAW / "portfolio_changes.csv")
+prices_frame = RAW / "prices_cache.csv"
+prices = get_prices_with_cache(
+    universe=universe,
+    portfolio=holdings_frame,
+    manual_prices=manual_prices,
+    file=prices_frame,
 )
 colours = pd.read_csv(RAW / "colours.csv")
 colours["colour_desat"] = colours["colour"].map(partial(desaturate, frac=0.3))
@@ -185,6 +195,30 @@ def evolution(start, end):
         hover_name="desc",
         hover_data={"weight": ":.1%", "value": True, "desc": False, "date": False},
     )
+
+    # Benchmarks
+    deltas = retrieve_original_investment(holdings_frame, universe, prices)
+    fig.add_trace(
+        go.Scatter(
+            x=deltas["date"],
+            y=deltas["delta_val"].cumsum(),
+            name="Money invested",
+            line=go.scatter.Line(color=COLS["gray1"]),
+        )
+    )
+    for benchmark in benchmarks["benchmark"].unique():
+        rebalanced_benchmark = distribute_benchmark_weights(
+            benchmarks[benchmarks["benchmark"] == benchmark], prices
+        )
+        value = benchmark_value(rebalanced_benchmark, prices, deltas)
+        fig.add_trace(
+            go.Scatter(
+                x=value["date"],
+                y=value["value"],
+                name=benchmark,
+                line=go.scatter.Line(color=COLS["gray2"]),
+            )
+        )
 
     fig.update_layout(legend_title_text="Security", legend_traceorder="reversed")
     fig.update_xaxes(

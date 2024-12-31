@@ -4,7 +4,7 @@ Stocks,Europe,IMAE,IMAE.AS,IEUR,EUR,Europe,MSCI Europe Incl 15% CH
 Stocks,Americas,CSPX,CSPX.L,,USD,S&P 500,S&P 500
 Stocks,Americas,BRK B,BRK-B,,USD,Berkshire,Berkshire
 Stocks,Asia,AJEUAS,AJEUAS.MI,,EUR,Asia ex Japan,MSCI Asia ex Japan
-Stocks,Asia,LCJD,LCJD.L,,JPY,Japan,MSCI Japan
+Stocks,Asia,LCJD,LCJD.L,,USD,Japan,MSCI Japan
 Stocks,Emerging,AEEM,AEEM.PA,,EUR,E&F markets,MSCI Emerging & Frontier markets incl 50% china/taiwan
 Stocks,Global,ACWIA,ACWIA.MI,,EUR,ACWI,ACWI
 Stocks,Global,IE00B4L5Y983,IWDA.L,,USD,MSCI World,MSCIW

@@ -1,8 +1,13 @@
 from typing import Union, Optional
+from pathlib import Path
+import logging
 
 import numpy as np
 import pandas as pd
 import yfinance as yf
+
+
+logger = logging.getLogger(__name__)
 
 
 def get_benchmark_portfolio(
@@ -23,6 +28,31 @@ def get_benchmark_portfolio(
         .copy()
         .assign(value=lambda x: x["weight"])
     )
+
+
+def get_holdings_frame(
+    path_to_file: str | Path,
+) -> pd.DataFrame:
+    """
+    Completes holdings frame from partial input frame.
+
+    Assumes no changes in holdings unless explicitly stated.
+    Args:
+        path_to_file:
+
+    Returns:
+        date|isin|count
+    """
+    raw = pd.read_csv(path_to_file)
+    filled = (
+        raw.set_index(["date", "isin"])
+        .unstack(level=1)
+        .ffill()
+        .fillna(0)
+        .stack(level=1, future_stack=True)
+        .reset_index()
+    )
+    return filled
 
 
 def get_holdings_portfolio(
@@ -59,7 +89,114 @@ def get_holdings_portfolio(
         .assign(weight=lambda x: x["value"] / x["value"].sum() * 100)
     )
     assert round(info["weight"].sum(), 3) == 100
-    return info[["isin", "weight", "value"]]
+    return info.loc[info["weight"] > 0, ["isin", "weight", "value"]]
+
+
+def get_returns(
+    prices: pd.DataFrame,
+) -> pd.DataFrame:
+    """
+    Returns performance for positions held between the dates for which
+    prices are available.
+
+    Returns include the principal, i.e. 100->105 appears as 1.05
+    Args:
+        prices: date|isin|price
+
+    Returns:
+        isin|date|return
+    """
+    return (
+        prices.set_index(["isin", "date"])
+        .sort_index()
+        .groupby(level=0)["price"]
+        .transform(lambda x: x.shift(-1) / x)
+        .fillna(1)
+        .rename("return")
+        .reset_index()
+    )
+
+
+def distribute_benchmark_weights(
+    benchmark: pd.DataFrame, prices: pd.DataFrame
+) -> pd.DataFrame:
+    """
+    Returns the same benchmark weights on all dates in prices
+    Args:
+        benchmark: isin|weight
+        prices:  date|isin|price
+
+    Returns:
+        date|isin|weight
+    """
+    return pd.concat(
+        [
+            benchmark[["isin", "weight"]].assign(date=dt)
+            for dt in prices["date"].unique()
+        ]
+    )
+
+
+def benchmark_value(
+    weights: pd.DataFrame,
+    prices: pd.DataFrame,
+    deltas: pd.DataFrame,
+) -> pd.DataFrame:
+    """
+    Generates value evolution of a portfolio
+
+    Assumes re-balancing only happens at the dates indicated by "weights".
+
+    Weights need not add up to 1. Instead, they are normalized ex post
+
+    Args:
+        weights: date|isin|weight
+        prices: date|isin|price
+        deltas: date|delta_val
+
+    Returns:
+        date|value
+    """
+    weights["weight"] = weights.groupby("date")["weight"].transform(
+        lambda x: x / x.sum()
+    )
+    assert not set(weights["date"]) - set(prices["date"]), "Missing prices"
+    assert not set(weights["isin"]) - set(prices["isin"]), "Missing isin"
+    values = (
+        weights.merge(get_returns(prices), on=["isin", "date"], how="left")
+        .assign(tot_return=lambda x: x["weight"] * x["return"])
+        .groupby("date")["tot_return"]
+        .sum()
+        .reset_index()
+        .merge(deltas, on="date")
+        .sort_values("date")
+        .assign(
+            cum_return=lambda x: x["tot_return"].cumprod(),
+            v_0=lambda x: x["delta_val"] / x["cum_return"],
+            value=lambda x: x["v_0"].cumsum() * x["cum_return"],
+        )
+    )
+    return values[["date", "value"]].copy()
+
+
+def benchmark_what_if(
+    benchmark: pd.DataFrame,
+    prices: pd.DataFrame,
+    deltas: pd.DataFrame,
+) -> pd.DataFrame:
+    """
+    Value of a hypothetical benchmark allocation, rebalanced with updated prices
+    Args:
+        benchmark: isin|weight
+        prices: date|isin|price
+        deltas: date|delta_val
+
+    Returns:
+        date|value
+    """
+    weights = distribute_benchmark_weights(benchmark, prices)
+    value = benchmark_value(weights=weights, prices=prices, deltas=deltas)
+    return value
 
 
 def portfolio_total_performance(
@@ -205,6 +342,36 @@ def comparison(realised: pd.DataFrame, benchmark: pd.DataFrame) -> pd.DataFrame:
     return both[index_cols + ["allocation", "selection", "interaction", "total"]]
 
 
+def get_prices_with_cache(
+    universe: pd.DataFrame,
+    portfolio: pd.DataFrame,
+    manual_prices: pd.DataFrame,
+    file: str | Path,
+):
+    """
+    Sources prices only when there is no cache file covering all needed dates
+    Args:
+        universe: isin|yf
+        portfolio: date
+        manual_prices: date|isin|price
+        file: path to cache file
+
+    Returns:
+        date|isin|price
+    """
+    try:  # use cache case
+        cache_content = pd.read_csv(file)
+        if set(portfolio["date"]) - set(cache_content["date"]):
+            raise ValueError("Incomplete dates")
+        logger.info("Using cache for prices")
+        return cache_content
+    except (ValueError, FileNotFoundError):  # get data case
+        logger.info("Sourcing price data")
+        new_content = get_prices(universe, portfolio, manual_prices)
+        new_content.to_csv(file, index=False)
+        return new_content
+
+
 def get_prices(
     universe: pd.DataFrame, portfolio: pd.DataFrame, manual_prices: pd.DataFrame
 ) -> pd.DataFrame:
@@ -292,3 +459,51 @@ def get_prices(
         ["date", "isin"]
     )
     return long
+
+
+def retrieve_original_investment(
+    portfolio: pd.DataFrame,
+    universe: pd.DataFrame,
+    prices: pd.DataFrame,
+) -> pd.DataFrame:
+    """
+    Total amount of money put into investments up to point in time
+
+    Ignores completely transaction and FX conversion costs
+
+    Args:
+        portfolio: date|isin|count
+        universe: isin|currency
+        prices: date|isin|price
+
+    Returns:
+        date|amount
+    """
+    assert all(
+        isin in universe["isin"].unique() for isin in portfolio["isin"].unique()
+    ), "isin not in universe"
+    changes = (
+        portfolio.set_index(["isin", "date"])
+        .sort_index()
+        .groupby(level=0)["count"]
+        .transform(lambda x: x.diff().fillna(x))
+        .reset_index()
+        .rename(columns={"count": "delta"})
+    )
+    deltas = (
+        changes.merge(universe[["isin", "currency"]], on="isin", how="left")
+        .merge(prices[["isin", "date", "price"]], on=["isin", "date"], how="left")
+        .merge(
+            prices[["isin", "date", "price"]].rename(
+                columns={"isin": "currency", "price": "fx"}
+            ),
+            on=["currency", "date"],
+            how="left",
+        )
+        .assign(delta_val=lambda x: x["delta"] * x["price"] * x["fx"])
+        .groupby("date")["delta_val"]
+        .sum()
+        .sort_index()
+        .reset_index()
+    )
+    return deltas
