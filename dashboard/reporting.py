@@ -52,7 +52,10 @@ RAW = Path(__file__).parents[0] / "data"
 benchmarks = pd.read_csv(RAW / "benchmarks.csv")
 universe = pd.read_csv(RAW / "universe.csv")
 manual_prices = pd.read_csv(RAW / "manual_prices.csv")
-holdings_frame = get_holdings_frame(RAW / "portfolio_changes.csv")
+if Path(RAW / "portfolio_changes.csv").is_file():
+    holdings_frame = get_holdings_frame(RAW / "portfolio_changes.csv")
+else:
+    holdings_frame = get_holdings_frame(RAW / "portfolio_changes_fallback.csv")
 prices_frame = RAW / "prices_cache.csv"
 prices = get_prices_with_cache(
     universe=universe,
